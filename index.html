@@ -1722,14 +1722,16 @@
             const amountStr = lastInputAmount.toFixed(2).replace('.', '_');
             const filename = `rozbicie_kwoty_${amountStr}_pln.xls`;
 
-            const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            // Use Data URI instead of Blob URL for better compatibility with file:// protocol
+            const base64 = btoa(unescape(encodeURIComponent(html)));
+            const dataUri = 'data:application/vnd.ms-excel;base64,' + base64;
+
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
+            link.href = dataUri;
             link.download = filename;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
         }
 
         // ============================================
