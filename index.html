@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Aplikacja do rozbijania kwoty PLN na nominały - działa offline">
+    <title>Rozbijanie kwoty na nominały PLN</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-light: #dbeafe;
+            --secondary: #64748b;
+            --secondary-hover: #475569;
+            --success: #10b981;
+            --success-light: #d1fae5;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --purple: #8b5cf6;
+            --purple-light: #ede9fe;
+            --amber: #f59e0b;
+            --amber-light: #fef3c7;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 32px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .header h1::before {
+            content: '💵';
+            font-size: 2rem;
+        }
+
+        .header .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .header .subtitle::before {
+            content: '🔒';
+        }
+
+        .preset-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--primary-light), #c7d2fe);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 16px;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.15);
+        }
+
+        .preset-badge::before {
+            content: '⚙️';
+        }
+
+        /* Input Section */
+        .input-section {
+            margin-bottom: 24px;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 16px 20px;
+            padding-right: 60px;
+            font-size: 1.25rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .input-wrapper input.error {
+            border-color: var(--danger);
+            box-shadow: 0 0 0 3px var(--danger-light);
+        }
+
+        .input-suffix {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 0.9rem;
+            margin-top: 8px;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .error-message::before {
+            content: '⚠️';
+        }
+
+        .error-message.visible {
+            display: flex;
+        }
+
+        /* Toggle Switch for Random Mode */
+        .toggle-section {
+            background: linear-gradient(135deg, var(--purple-light), #ddd6fe);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-section.active {
+            border-color: var(--purple);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .toggle-label {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .toggle-title {
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-title::before {
+            content: '🎲';
+        }
+
+        .toggle-hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 56px;
+            height: 30px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--secondary);
+            transition: 0.3s;
+            border-radius: 30px;
+        }
+
+        .toggle-slider::before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background: linear-gradient(135deg, var(--purple), #7c3aed);
+        }
+
+        .toggle-switch input:checked+.toggle-slider::before {
+            transform: translateX(26px);
+        }
+
+        .min-amount-info {
+            width: 100%;
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            color: var(--purple);
+            font-weight: 500;
+            display: none;
+        }
+
+        .min-amount-info.visible {
+            display: block;
+        }
+
+        .min-amount-info::before {
+            content: 'ℹ️ ';
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 14px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
+            color: white;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--secondary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--bg);
+            border-color: var(--secondary);
+        }
+
+        .btn-preset {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+        }
+
+        .btn-preset:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+        }
+
+        .btn-unlock {
+            background: linear-gradient(135deg, var(--amber), #d97706);
+            color: white;
+            flex: 0;
+            min-width: auto;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+        }
+
+        .btn-unlock:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        /* Results */
+        .results-section {
+            display: none;
+        }
+
+        .results-section.visible {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .results-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .results-header h2::before {
+            content: '📊';
+            font-size: 1.5rem;
+        }
+
+        .mode-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .mode-badge.standard {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .mode-badge.random {
+            background: var(--purple-light);
+            color: var(--purple);
+        }
+
+        .results-table-wrapper {
+            overflow-x: auto;
+            margin: 0 -16px;
+            padding: 0 16px;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1rem;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 14px 16px;
+            text-align: left;
+        }
+
+        .results-table th {
+            background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .results-table.random-mode th {
+            background: linear-gradient(135deg, var(--purple) 0%, #7c3aed 100%);
+        }
+
+        .results-table th:first-child {
+            border-radius: var(--radius-sm) 0 0 0;
+        }
+
+        .results-table th:last-child {
+            border-radius: 0 var(--radius-sm) 0 0;
+            text-align: right;
+        }
+
+        .results-table td:last-child {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .results-table tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s ease;
+        }
+
+        .results-table tbody tr:nth-child(even) {
+            background: var(--bg);
+        }
+
+        .results-table tbody tr:hover {
+            background: var(--primary-light);
+        }
+
+        .results-table.random-mode tbody tr:hover {
+            background: var(--purple-light);
+        }
+
+        /* Locked row styling */
+        .results-table tbody tr.locked {
+            background: var(--amber-light) !important;
+        }
+
+        .results-table tbody tr.locked:hover {
+            background: #fde68a !important;
+        }
+
+        .results-table .nominal {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .results-table.random-mode .nominal {
+            color: var(--purple);
+        }
+
+        .results-table tbody tr.locked .nominal {
+            color: var(--amber);
+        }
+
+        .results-table .quantity {
+            font-weight: 500;
+        }
+
+        .results-table .value {
+            color: var(--success);
+            font-weight: 700;
+        }
+
+        /* Editable quantity cell */
+        .quantity-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quantity-display {
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .quantity-display:hover {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .quantity-display .edit-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .quantity-display:hover .edit-hint {
+            opacity: 1;
+        }
+
+        .quantity-input-wrapper {
+            display: none;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .quantity-input-wrapper.active {
+            display: flex;
+        }
+
+        .quantity-input {
+            width: 70px;
+            padding: 6px 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: 2px solid var(--primary);
+            border-radius: 4px;
+            text-align: center;
+            font-family: inherit;
+        }
+
+        .quantity-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .quantity-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .quantity-btn.minus {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+
+        .quantity-btn.plus {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .quantity-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .lock-icon {
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .lock-icon:hover {
+            transform: scale(1.2);
+        }
+
+        .lock-icon.locked {
+            color: var(--amber);
+        }
+
+        /* Locked info panel */
+        .locked-info-panel {
+            display: none;
+            background: linear-gradient(135deg, var(--amber-light), #fde68a);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            margin-top: 16px;
+            border: 2px solid var(--amber);
+        }
+
+        .locked-info-panel.visible {
+            display: block;
+        }
+
+        .locked-info-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .locked-info-text {
+            font-weight: 600;
+            color: #92400e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .locked-info-text::before {
+            content: '🔒';
+        }
+
+        /* Summary */
+        .summary-section {
+            margin-top: 24px;
+            background: linear-gradient(135deg, var(--success-light), #a7f3d0);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .summary-label::before {
+            content: '✅';
+            font-size: 1.25rem;
+        }
+
+        .summary-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #047857;
+        }
+
+        .summary-info {
+            width: 100%;
+            font-size: 0.9rem;
+            color: #047857;
+            margin-top: 4px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: none;
+        }
+
+        /* Preset Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            max-width: 400px;
+            width: 100%;
+            animation: modalIn 0.2s ease-out;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-header h3::before {
+            content: '⚙️';
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .preset-option {
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preset-option:last-child {
+            margin-bottom: 0;
+        }
+
+        .preset-option:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .preset-option.active {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .preset-option-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preset-option.active .preset-option-title::after {
+            content: '✓';
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .preset-option-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.35rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .btn-unlock {
+                width: 100%;
+            }
+
+            .summary-section {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .summary-value {
+                font-size: 1.5rem;
+            }
+
+            .results-table th,
+            .results-table td {
+                padding: 10px 12px;
+            }
+
+            .toggle-container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .toggle-switch {
+                align-self: flex-end;
+                margin-top: -30px;
+            }
+
+            .locked-info-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .card {
+                box-shadow: none;
+                border: 1px solid var(--border);
+            }
+
+            .btn,
+            .footer,
+            .toggle-section,
+            .locked-info-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Main Card -->
+        <div class="card">
+            <!-- Header -->
+            <header class="header">
+                <h1>Rozbijanie kwoty na nominały (PLN)</h1>
+                <p class="subtitle">Działa offline • jeden plik HTML</p>
+                <div class="preset-badge" id="currentPresetBadge">Pełny</div>
+            </header>
+
+            <!-- Input Section -->
+            <section class="input-section">
+                <div class="input-group">
+                    <label for="amount">Kwota (PLN)</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="amount" placeholder="np. 1234,50" autocomplete="off" inputmode="decimal">
+                        <span class="input-suffix">PLN</span>
+                    </div>
+                    <div class="error-message" id="errorMessage"></div>
+                </div>
+            </section>
+
+            <!-- Random Mode Toggle -->
+            <div class="toggle-section" id="toggleSection">
+                <div class="toggle-container">
+                    <div class="toggle-label">
+                        <span class="toggle-title">Wymuś wszystkie nominały</span>
+                        <span class="toggle-hint">Użyj każdego nominału minimum raz, reszta losowo</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="randomModeToggle" onchange="toggleRandomMode()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <div class="min-amount-info" id="minAmountInfo">
+                        Minimalna kwota dla tego presetu: <strong id="minAmountValue">868,80 zł</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-group">
+                <button class="btn btn-primary" id="calculateBtn" onclick="calculate()">
+                    🧮 Oblicz
+                </button>
+                <button class="btn btn-preset" onclick="openPresetModal()">
+                    🔄 Zmień konfigurację
+                </button>
+            </div>
+
+            <div class="button-group" style="margin-top: 12px;">
+                <button class="btn btn-secondary" id="exportBtn" onclick="exportToXLS()" disabled>
+                    📥 Eksport do XLS
+                </button>
+                <button class="btn btn-outline" id="clearBtn" onclick="clearAll()">
+                    🗑️ Wyczyść
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Card -->
+        <div class="card results-section" id="resultsSection">
+            <div class="results-header">
+                <h2>Wynik</h2>
+                <span class="mode-badge standard" id="modeBadge">Tryb: Standardowy</span>
+            </div>
+
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+                💡 <em>Kliknij na ilość, aby ją zmienić i zablokować nominał</em>
+            </p>
+
+            <div class="results-table-wrapper">
+                <table class="results-table" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Nominał</th>
+                            <th>Ilość</th>
+                            <th>Wartość</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Locked Info Panel -->
+            <div class="locked-info-panel" id="lockedInfoPanel">
+                <div class="locked-info-content">
+                    <span class="locked-info-text" id="lockedInfoText">Zablokowano 0 nominałów (0,00 zł)</span>
+                    <button class="btn btn-unlock" onclick="unlockAll()">🔓 Odblokuj wszystkie</button>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="summary-section">
+                <div>
+                    <div class="summary-label">Suma kontrolna</div>
+                    <div class="summary-info" id="summaryInfo">Zgodne z kwotą wejściową</div>
+                </div>
+                <div class="summary-value" id="summaryValue">0,00 zł</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            Aplikacja offline • Brak wymaganych połączeń sieciowych • v1.5
+        </footer>
+    </div>
+
+    <!-- Preset Modal -->
+    <div class="modal-overlay" id="presetModal" onclick="closePresetModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Wybierz konfigurację</h3>
+                <button class="modal-close" onclick="closePresetModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="preset-option active" data-preset="full" onclick="selectPreset('full')">
+                    <div class="preset-option-title">Pełny</div>
+                    <div class="preset-option-desc">Wszystkie nominały: 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.50, 0.20,
+                        0.10 zł</div>
+                </div>
+                <div class="preset-option" data-preset="banknotes" onclick="selectPreset('banknotes')">
+                    <div class="preset-option-title">Tylko banknoty</div>
+                    <div class="preset-option-desc">Banknoty: 500, 200, 100, 50, 20, 10 zł</div>
+                </div>
+                <div class="preset-option" data-preset="banknotesCoins" onclick="selectPreset('banknotesCoins')">
+                    <div class="preset-option-title">Banknoty + pełne złotówki</div>
+                    <div class="preset-option-desc">Banknoty i monety: 500, 200, 100, 50, 20, 10, 5, 2, 1 zł</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const PRESETS = {
+            full: {
+                name: 'Pełny',
+                denominations: [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1]
+            },
+            banknotes: {
+                name: 'Tylko banknoty',
+                denominations: [500, 200, 100, 50, 20, 10]
+            },
+            banknotesCoins: {
+                name: 'Banknoty + pełne złotówki',
+                denominations: [500, 200, 100, 50, 20, 10, 5, 2, 1]
+            }
+        };
+
+        let currentPreset = 'full';
+        let randomMode = false;
+        let lastResults = null;
+        let lastInputAmount = null;
+        let lastMode = 'standard';
+
+        // Locked denominations: { nominal: quantity }
+        let lockedDenominations = {};
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const amountInput = document.getElementById('amount');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultsBody = document.getElementById('resultsBody');
+        const resultsTable = document.getElementById('resultsTable');
+        const summaryValue = document.getElementById('summaryValue');
+        const summaryInfo = document.getElementById('summaryInfo');
+        const exportBtn = document.getElementById('exportBtn');
+        const currentPresetBadge = document.getElementById('currentPresetBadge');
+        const presetModal = document.getElementById('presetModal');
+        const randomModeToggle = document.getElementById('randomModeToggle');
+        const toggleSection = document.getElementById('toggleSection');
+        const minAmountInfo = document.getElementById('minAmountInfo');
+        const minAmountValue = document.getElementById('minAmountValue');
+        const modeBadge = document.getElementById('modeBadge');
+        const lockedInfoPanel = document.getElementById('lockedInfoPanel');
+        const lockedInfoText = document.getElementById('lockedInfoText');
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        function parseAmount(value) {
+            const normalized = value.replace(',', '.').trim();
+
+            if (!/^-?\d+(\.\d+)?$/.test(normalized)) {
+                return { valid: false, error: 'Nieprawidłowy format liczby.' };
+            }
+
+            const amount = parseFloat(normalized);
+
+            if (isNaN(amount)) {
+                return { valid: false, error: 'Nieprawidłowy format liczby.' };
+            }
+
+            if (amount < 0) {
+                return { valid: false, error: 'Kwota nie może być ujemna.' };
+            }
+
+            if (amount === 0) {
+                return { valid: false, error: 'Kwota musi być większa od zera.' };
+            }
+
+            return { valid: true, amount };
+        }
+
+        function formatCurrency(amount) {
+            return amount.toLocaleString('pl-PL', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + ' zł';
+        }
+
+        function formatNominal(nominal) {
+            if (nominal < 1) {
+                return (nominal * 100).toFixed(0) + ' gr';
+            }
+            return nominal.toLocaleString('pl-PL', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }) + ' zł';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('visible');
+            amountInput.classList.add('error');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('visible');
+            amountInput.classList.remove('error');
+        }
+
+        function getMinimumAmount(denominations) {
+            return denominations.reduce((sum, d) => sum + d, 0);
+        }
+
+        function updateMinAmountDisplay() {
+            const denominations = PRESETS[currentPreset].denominations;
+            const minAmount = getMinimumAmount(denominations);
+            minAmountValue.textContent = formatCurrency(minAmount);
+        }
+
+        function getLockedTotal() {
+            let total = 0;
+            for (const nominal in lockedDenominations) {
+                total += parseFloat(nominal) * lockedDenominations[nominal];
+            }
+            return Math.round(total * 100) / 100;
+        }
+
+        function getLockedCount() {
+            return Object.keys(lockedDenominations).length;
+        }
+
+        function updateLockedInfoPanel() {
+            const count = getLockedCount();
+            const total = getLockedTotal();
+
+            if (count > 0) {
+                lockedInfoPanel.classList.add('visible');
+                lockedInfoText.textContent = `Zablokowano ${count} nominał${count === 1 ? '' : count < 5 ? 'y' : 'ów'} (${formatCurrency(total)})`;
+            } else {
+                lockedInfoPanel.classList.remove('visible');
+            }
+        }
+
+        // ============================================
+        // CORE CALCULATION - STANDARD (GREEDY)
+        // ============================================
+        function calculateDenominationsGreedy(amount, denominations, locked = {}) {
+            let remainingGrosze = Math.round(amount * 100);
+            const results = [];
+
+            // First, subtract locked amounts
+            for (const nominal in locked) {
+                const nominalGrosze = Math.round(parseFloat(nominal) * 100);
+                remainingGrosze -= locked[nominal] * nominalGrosze;
+            }
+
+            // Check if locked exceeds amount
+            if (remainingGrosze < 0) {
+                return {
+                    error: true,
+                    message: `Zablokowane nominały przekraczają kwotę wejściową o ${formatCurrency(Math.abs(remainingGrosze / 100))}`
+                };
+            }
+
+            // Calculate unlocked denominations
+            for (const nominal of denominations) {
+                const nominalKey = nominal.toString();
+
+                if (locked.hasOwnProperty(nominalKey)) {
+                    // Use locked quantity
+                    const quantity = locked[nominalKey];
+                    const value = quantity * nominal;
+                    results.push({
+                        nominal,
+                        quantity,
+                        value,
+                        locked: true
+                    });
+                } else {
+                    // Calculate with greedy algorithm
+                    const nominalGrosze = Math.round(nominal * 100);
+                    const quantity = Math.floor(remainingGrosze / nominalGrosze);
+
+                    if (quantity > 0) {
+                        const value = quantity * nominal;
+                        results.push({
+                            nominal,
+                            quantity,
+                            value,
+                            locked: false
+                        });
+                        remainingGrosze -= quantity * nominalGrosze;
+                    }
+                }
+            }
+
+            const totalSum = results.reduce((sum, item) => sum + Math.round(item.value * 100), 0) / 100;
+
+            return {
+                results,
+                totalSum,
+                isExact: Math.abs(totalSum - amount) < 0.001,
+                remainder: remainingGrosze / 100
+            };
+        }
+
+        // ============================================
+        // CORE CALCULATION - RANDOM (ALL DENOMINATIONS)
+        // ============================================
+        function calculateDenominationsRandom(amount, denominations, locked = {}) {
+            const amountGrosze = Math.round(amount * 100);
+            const minAmount = getMinimumAmount(denominations);
+            const minAmountGrosze = Math.round(minAmount * 100);
+
+            if (amountGrosze < minAmountGrosze) {
+                return {
+                    error: true,
+                    message: `Kwota jest zbyt mała, aby użyć wszystkich nominałów. Minimalna kwota: ${formatCurrency(minAmount)}`
+                };
+            }
+
+            // Start with 1 of each or locked quantity
+            const quantities = {};
+            let lockedGrosze = 0;
+
+            denominations.forEach(d => {
+                const nominalKey = d.toString();
+                if (locked.hasOwnProperty(nominalKey)) {
+                    quantities[d] = locked[nominalKey];
+                    lockedGrosze += locked[nominalKey] * Math.round(d * 100);
+                } else {
+                    quantities[d] = 1;
+                }
+            });
+
+            // Calculate remaining after locked and minimum 1 of each unlocked
+            let unlockedMinGrosze = 0;
+            denominations.forEach(d => {
+                const nominalKey = d.toString();
+                if (!locked.hasOwnProperty(nominalKey)) {
+                    unlockedMinGrosze += Math.round(d * 100);
+                }
+            });
+
+            let remainingGrosze = amountGrosze - lockedGrosze - unlockedMinGrosze;
+
+            if (remainingGrosze < 0) {
+                return {
+                    error: true,
+                    message: `Zablokowane nominały przekraczają dostępną kwotę. Zmniejsz ilości lub odblokuj nominały.`
+                };
+            }
+
+            // Randomly distribute remaining to unlocked denominations
+            const sortedDenoms = [...denominations].sort((a, b) => b - a);
+            const unlockedDenoms = sortedDenoms.filter(d => !locked.hasOwnProperty(d.toString()));
+
+            for (let i = 0; i < unlockedDenoms.length - 1; i++) {
+                const nominal = unlockedDenoms[i];
+                const nominalGrosze = Math.round(nominal * 100);
+
+                if (remainingGrosze >= nominalGrosze) {
+                    const maxExtra = Math.floor(remainingGrosze / nominalGrosze);
+                    const weight = Math.random();
+                    const extraQuantity = Math.floor(weight * weight * (maxExtra + 1));
+
+                    quantities[nominal] += extraQuantity;
+                    remainingGrosze -= extraQuantity * nominalGrosze;
+                }
+            }
+
+            // Last unlocked denomination fills the remaining
+            if (unlockedDenoms.length > 0) {
+                const smallestUnlocked = unlockedDenoms[unlockedDenoms.length - 1];
+                const smallestGrosze = Math.round(smallestUnlocked * 100);
+
+                if (remainingGrosze > 0) {
+                    const extra = Math.floor(remainingGrosze / smallestGrosze);
+                    quantities[smallestUnlocked] += extra;
+                    remainingGrosze -= extra * smallestGrosze;
+                }
+            }
+
+            // Build results
+            const results = [];
+            for (const nominal of denominations) {
+                const nominalKey = nominal.toString();
+                const quantity = quantities[nominal];
+                const value = quantity * nominal;
+                results.push({
+                    nominal,
+                    quantity,
+                    value,
+                    locked: locked.hasOwnProperty(nominalKey)
+                });
+            }
+
+            const totalSum = results.reduce((sum, item) => sum + Math.round(item.value * 100), 0) / 100;
+
+            return {
+                results,
+                totalSum,
+                isExact: Math.abs(totalSum - amount) < 0.01,
+                remainder: remainingGrosze / 100
+            };
+        }
+
+        // ============================================
+        // UI FUNCTIONS
+        // ============================================
+        function toggleRandomMode() {
+            randomMode = randomModeToggle.checked;
+
+            if (randomMode) {
+                toggleSection.classList.add('active');
+                minAmountInfo.classList.add('visible');
+                updateMinAmountDisplay();
+            } else {
+                toggleSection.classList.remove('active');
+                minAmountInfo.classList.remove('visible');
+            }
+        }
+
+        function calculate() {
+            hideError();
+
+            const value = amountInput.value.trim();
+
+            if (!value) {
+                showError('Wpisz kwotę.');
+                return;
+            }
+
+            const parsed = parseAmount(value);
+
+            if (!parsed.valid) {
+                showError(parsed.error);
+                return;
+            }
+
+            const denominations = PRESETS[currentPreset].denominations;
+            let calculation;
+
+            if (randomMode) {
+                calculation = calculateDenominationsRandom(parsed.amount, denominations, lockedDenominations);
+                lastMode = 'random';
+            } else {
+                calculation = calculateDenominationsGreedy(parsed.amount, denominations, lockedDenominations);
+                lastMode = 'standard';
+            }
+
+            if (calculation.error) {
+                showError(calculation.message);
+                return;
+            }
+
+            lastResults = calculation;
+            lastInputAmount = parsed.amount;
+
+            displayResults(calculation, parsed.amount);
+        }
+
+        function displayResults(calculation, inputAmount) {
+            resultsBody.innerHTML = '';
+
+            // Update mode badge
+            if (lastMode === 'random') {
+                modeBadge.textContent = 'Tryb: Losowy (wszystkie nominały)';
+                modeBadge.className = 'mode-badge random';
+                resultsTable.classList.add('random-mode');
+            } else {
+                modeBadge.textContent = 'Tryb: Standardowy';
+                modeBadge.className = 'mode-badge standard';
+                resultsTable.classList.remove('random-mode');
+            }
+
+            // Populate table
+            for (const item of calculation.results) {
+                if (item.quantity > 0 || item.locked) {
+                    const row = document.createElement('tr');
+                    if (item.locked) {
+                        row.classList.add('locked');
+                    }
+
+                    row.innerHTML = `
+                        <td class="nominal">${formatNominal(item.nominal)}</td>
+                        <td class="quantity">
+                            <div class="quantity-cell">
+                                <span class="quantity-display" onclick="startEditQuantity(${item.nominal}, this)" title="Kliknij aby edytować">
+                                    × ${item.quantity}
+                                    <span class="edit-hint">✏️</span>
+                                </span>
+                                <div class="quantity-input-wrapper" data-nominal="${item.nominal}">
+                                    <button class="quantity-btn minus" onclick="adjustQuantity(${item.nominal}, -1)">−</button>
+                                    <input type="number" class="quantity-input" value="${item.quantity}" min="0" 
+                                           onkeydown="handleQuantityKeydown(event, ${item.nominal})"
+                                           onblur="confirmQuantity(${item.nominal}, this)">
+                                    <button class="quantity-btn plus" onclick="adjustQuantity(${item.nominal}, 1)">+</button>
+                                </div>
+                                ${item.locked ? `<span class="lock-icon locked" onclick="toggleLock(${item.nominal})" title="Kliknij aby odblokować">🔒</span>` : ''}
+                            </div>
+                        </td>
+                        <td class="value">${formatCurrency(item.value)}</td>
+                    `;
+                    resultsBody.appendChild(row);
+                }
+            }
+
+            // Update summary
+            summaryValue.textContent = formatCurrency(calculation.totalSum);
+
+            if (calculation.isExact) {
+                summaryInfo.textContent = 'Zgodne z kwotą wejściową';
+                summaryInfo.style.color = '#047857';
+            } else {
+                const diff = inputAmount - calculation.totalSum;
+                if (diff > 0) {
+                    summaryInfo.textContent = `Reszta niemożliwa do wydania: ${formatCurrency(diff)}`;
+                } else {
+                    summaryInfo.textContent = `Przekroczono kwotę o: ${formatCurrency(Math.abs(diff))}`;
+                }
+                summaryInfo.style.color = '#b45309';
+            }
+
+            // Update locked info panel
+            updateLockedInfoPanel();
+
+            // Show results section
+            resultsSection.classList.add('visible');
+
+            // Enable export button
+            exportBtn.disabled = false;
+
+            // Scroll to results on mobile
+            if (window.innerWidth <= 600) {
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // ============================================
+        // QUANTITY EDITING FUNCTIONS
+        // ============================================
+        function startEditQuantity(nominal, displayElement) {
+            // Hide display, show input
+            displayElement.style.display = 'none';
+            const wrapper = displayElement.parentElement.querySelector('.quantity-input-wrapper');
+            wrapper.classList.add('active');
+            const input = wrapper.querySelector('.quantity-input');
+            input.focus();
+            input.select();
+        }
+
+        function handleQuantityKeydown(event, nominal) {
+            if (event.key === 'Enter') {
+                confirmQuantity(nominal, event.target);
+            } else if (event.key === 'Escape') {
+                cancelEdit(nominal);
+            }
+        }
+
+        function confirmQuantity(nominal, inputElement) {
+            const newQuantity = parseInt(inputElement.value) || 0;
+            const nominalKey = nominal.toString();
+
+            if (newQuantity >= 0) {
+                if (newQuantity === 0) {
+                    // Remove from locked if quantity is 0
+                    delete lockedDenominations[nominalKey];
+                } else {
+                    // Lock the denomination with new quantity
+                    lockedDenominations[nominalKey] = newQuantity;
+                }
+
+                // Recalculate
+                calculate();
+            } else {
+                cancelEdit(nominal);
+            }
+        }
+
+        function cancelEdit(nominal) {
+            const wrapper = document.querySelector(`.quantity-input-wrapper[data-nominal="${nominal}"]`);
+            if (wrapper) {
+                wrapper.classList.remove('active');
+                const display = wrapper.parentElement.querySelector('.quantity-display');
+                if (display) {
+                    display.style.display = '';
+                }
+            }
+        }
+
+        function adjustQuantity(nominal, delta) {
+            const wrapper = document.querySelector(`.quantity-input-wrapper[data-nominal="${nominal}"]`);
+            const input = wrapper.querySelector('.quantity-input');
+            let newValue = parseInt(input.value) + delta;
+            if (newValue < 0) newValue = 0;
+            input.value = newValue;
+        }
+
+        function toggleLock(nominal) {
+            const nominalKey = nominal.toString();
+
+            if (lockedDenominations.hasOwnProperty(nominalKey)) {
+                delete lockedDenominations[nominalKey];
+                calculate();
+            }
+        }
+
+        function unlockAll() {
+            lockedDenominations = {};
+            calculate();
+        }
+
+        function clearAll() {
+            amountInput.value = '';
+            hideError();
+            resultsSection.classList.remove('visible');
+            resultsBody.innerHTML = '';
+            exportBtn.disabled = true;
+            lastResults = null;
+            lastInputAmount = null;
+            lastMode = 'standard';
+            lockedDenominations = {};
+            updateLockedInfoPanel();
+            amountInput.focus();
+        }
+
+        // ============================================
+        // PRESET FUNCTIONS
+        // ============================================
+        function openPresetModal() {
+            presetModal.classList.add('visible');
+            updatePresetOptions();
+        }
+
+        function closePresetModal(event) {
+            if (event && event.target !== presetModal) return;
+            presetModal.classList.remove('visible');
+        }
+
+        function updatePresetOptions() {
+            document.querySelectorAll('.preset-option').forEach(option => {
+                option.classList.remove('active');
+                if (option.dataset.preset === currentPreset) {
+                    option.classList.add('active');
+                }
+            });
+        }
+
+        function selectPreset(presetKey) {
+            currentPreset = presetKey;
+            currentPresetBadge.textContent = PRESETS[presetKey].name;
+            updatePresetOptions();
+            closePresetModal();
+
+            // Clear locks when changing preset
+            lockedDenominations = {};
+
+            if (randomMode) {
+                updateMinAmountDisplay();
+            }
+
+            if (lastInputAmount !== null) {
+                calculate();
+            }
+        }
+
+        // ============================================
+        // EXPORT TO XLS
+        // ============================================
+        function exportToXLS() {
+            if (!lastResults || !lastInputAmount) return;
+
+            const presetName = PRESETS[currentPreset].name;
+            const modeText = lastMode === 'random' ? 'Losowy (wszystkie nominały)' : 'Standardowy';
+            const lockedCount = getLockedCount();
+            const lockedTotal = getLockedTotal();
+
+            let html = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+                      xmlns:x="urn:schemas-microsoft-com:office:excel"
+                      xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="UTF-8">
+                    <!--[if gte mso 9]>
+                    <xml>
+                        <x:ExcelWorkbook>
+                            <x:ExcelWorksheets>
+                                <x:ExcelWorksheet>
+                                    <x:Name>Rozbicie kwoty</x:Name>
+                                    <x:WorksheetOptions>
+                                        <x:DisplayGridlines/>
+                                    </x:WorksheetOptions>
+                                </x:ExcelWorksheet>
+                            </x:ExcelWorksheets>
+                        </x:ExcelWorkbook>
+                    </xml>
+                    <![endif]-->
+                    <style>
+                        table { border-collapse: collapse; }
+                        th, td { border: 1px solid #000; padding: 8px; }
+                        th { background-color: ${lastMode === 'random' ? '#8b5cf6' : '#4472C4'}; color: white; font-weight: bold; }
+                        .title { font-size: 16pt; font-weight: bold; }
+                        .label { font-weight: bold; }
+                        .value-cell { text-align: right; }
+                        .sum-row { background-color: #E2EFDA; font-weight: bold; }
+                        .locked-row { background-color: #FEF3C7; }
+                    </style>
+                </head>
+                <body>
+                    <table>
+                        <tr><td colspan="3" class="title">Rozbicie kwoty na nominały</td></tr>
+                        <tr><td colspan="3"></td></tr>
+                        <tr>
+                            <td class="label">Kwota wejściowa:</td>
+                            <td colspan="2" class="value-cell">${formatCurrency(lastInputAmount)}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Konfiguracja:</td>
+                            <td colspan="2">${presetName}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Tryb:</td>
+                            <td colspan="2">${modeText}</td>
+                        </tr>
+            `;
+
+            if (lockedCount > 0) {
+                html += `
+                        <tr>
+                            <td class="label">Zablokowane:</td>
+                            <td colspan="2">${lockedCount} nominałów (${formatCurrency(lockedTotal)})</td>
+                        </tr>
+                `;
+            }
+
+            html += `
+                        <tr><td colspan="3"></td></tr>
+                        <tr>
+                            <th>Nominał</th>
+                            <th>Ilość</th>
+                            <th>Wartość</th>
+                        </tr>
+            `;
+
+            for (const item of lastResults.results) {
+                if (item.quantity > 0) {
+                    html += `
+                        <tr${item.locked ? ' class="locked-row"' : ''}>
+                            <td>${formatNominal(item.nominal)}${item.locked ? ' 🔒' : ''}</td>
+                            <td style="text-align: center;">${item.quantity}</td>
+                            <td class="value-cell">${formatCurrency(item.value)}</td>
+                        </tr>
+                    `;
+                }
+            }
+
+            html += `
+                        <tr class="sum-row">
+                            <td colspan="2">SUMA KOŃCOWA:</td>
+                            <td class="value-cell">${formatCurrency(lastResults.totalSum)}</td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            const amountStr = lastInputAmount.toFixed(2).replace('.', '_');
+            const filename = `rozbicie_kwoty_${amountStr}_pln.xls`;
+
+            const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        amountInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                calculate();
+            }
+        });
+
+        amountInput.addEventListener('input', function () {
+            hideError();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && presetModal.classList.contains('visible')) {
+                closePresetModal();
+            }
+        });
+
+        window.addEventListener('load', function () {
+            amountInput.focus();
+            updateMinAmountDisplay();
+        });
+    </script>
+</body>
+
+</html>
